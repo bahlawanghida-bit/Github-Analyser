@@ -41,10 +41,28 @@ print(language_percentages)
 # check: percentage breakdown per language
 sorted_df = df.sort_values("commit_count", ascending = False)# sort all repos by commit_count, highest first
 print(sorted_df[["name", "commit_count"]])# check: repos sorted by commit_count, highest first — only showing name and count for readability
+most_active_repo = sorted_df.iloc[0]# grab the very first row of the sorted DataFrame — the repo with the highest commit_count
+print(most_active_repo)# check: details of the single most active repo
+
+all_commit_dates = []# empty list to hold every commit timestamp across all repos, flattened into one list
+
+for repo in output:# loop through every repo dict
+    all_commit_dates.extend(repo["commit_dates"]) # add all of this repo's commit dates into the combined flat list
+
+print(len(all_commit_dates))# check: total number of commits across the whole account
+
+commit_datetimes = pd.to_datetime(all_commit_dates) # convert the raw ISO date strings into real datetime objects pandas can analyze
+
+print(commit_datetimes)# check: see the converted datetime values
+
+commit_hours= commit_datetimes.hour# extract just the hour (0-23) from each commit's datetime
+print(commit_hours)# check: see all the hours commits happened at
 
 
+hour_counts= commit_hours.value_counts()# count how many commits happened during each hour, across the whole account
+print(hour_counts)# check: commit frequency by hour of day
 
 
+  #bahlawanghida-bit
 
-  #bahlawanghida-bit  
-
+  
