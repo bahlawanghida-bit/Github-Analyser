@@ -38,6 +38,24 @@
     ]
   },
   {
+    "name": "Github-Analyser",
+    "stars": 1,
+    "primary_language": "Python",
+    "languages_url": "https://api.github.com/repos/bahlawanghida-bit/Github-Analyser/languages",
+    "is_fork": false,
+    "url": "https://github.com/bahlawanghida-bit/Github-Analyser",
+    "languages": {
+      "Python": 7780
+    },
+    "commit_count": 4,
+    "commit_dates": [
+      "2026-09-03T21:28:45Z",
+      "2026-09-03T21:27:58Z",
+      "2026-09-03T20:56:31Z",
+      "2026-09-02T10:37:23Z"
+    ]
+  },
+  {
     "name": "OOP",
     "stars": 0,
     "primary_language": "Java",

@@ -62,6 +62,37 @@ print(commit_hours)# check: see all the hours commits happened at
 hour_counts= commit_hours.value_counts()# count how many commits happened during each hour, across the whole account
 print(hour_counts)# check: commit frequency by hour of day
 
+commit_days = commit_datetimes.day_name()# extract the day of the week (e.g. "Monday") from each commit's datetime
+print(commit_days)# check: see all the days commits happened on
+day_counts = commit_days.value_counts()# count how many commits happened on each day of the week
+print(day_counts)
+
+language_count = len(language_totals)# count how many distinct languages appear across the whole account
+print(language_count)# check: total number of distinct languages used
+
+
+if language_count == 1:
+    language_tag = "Monolangual"
+elif language_count == 2:
+    language_tag = "Bilangual"
+elif language_count == 3:
+    language_tag = "Trilangual"
+else:
+    language_tag = "Polyglot" 
+
+print(language_tag)
+
+most_common_hour = hour_counts.index[0]# get the hour with the highest number of commits
+print(most_common_hour)# check: which hour do most commits happen at (UTC)
+
+if most_common_hour>= 22 or most_common_hour < 4:
+    time_tag= "Night Owl"
+elif most_common_hour<= 10 and most_common_hour > 4:
+    time_tag= "Early Bird"
+else: 
+    time_tag = "Regular Hour"
+
+print(time_tag)
 
   #bahlawanghida-bit
 
