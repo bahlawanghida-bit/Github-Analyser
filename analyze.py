@@ -39,8 +39,8 @@ for language_name, language_bytes in language_totals.items():
 
 print(language_percentages)
 # check: percentage breakdown per language
-
-
+sorted_df = df.sort_values("commit_count", ascending = False)# sort all repos by commit_count, highest first
+print(sorted_df[["name", "commit_count"]])# check: repos sorted by commit_count, highest first — only showing name and count for readability
 
 
 
