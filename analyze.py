@@ -47,7 +47,8 @@ print(most_active_repo)# check: details of the single most active repo
 all_commit_dates = []# empty list to hold every commit timestamp across all repos, flattened into one list
 
 for repo in output:# loop through every repo dict
-    all_commit_dates.extend(repo["commit_dates"]) # add all of this repo's commit dates into the combined flat list
+    if repo["commit_dates"]: # skip repos whose commit fetch failed (None) or that have no commits ([])
+        all_commit_dates.extend(repo["commit_dates"]) # add all of this repo's commit dates into the combined flat list
 
 print(len(all_commit_dates))# check: total number of commits across the whole account
 

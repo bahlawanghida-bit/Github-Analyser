@@ -66,8 +66,8 @@ for repo in filtered_repos :
         lang_response = requests.get(repo["languages_url"], headers= headers)
         # add a new "languages" key into this repo's dict
         repo["languages"] = lang_response.json()
-    except requests.exceptions.ConnectError:
-        print(f"Connection Error fetching languages for {repo['name']},skippig")
+    except requests.exceptions.ConnectionError: 
+        print(f"Connection Error fetching languages for {repo['name']}, skipping")
         repo["languages"]= {}   
      # progress indicator so we can see it working
     print(f"Fetched languages for: {repo['name']}")
@@ -76,6 +76,11 @@ for repo in filtered_repos :
         commits_url = repo["languages_url"].replace("/languages","/commits")
         commits_response = requests.get(commits_url, headers= headers, params= {"per_page": 100})
         commitsList = commits_response.json()
+        # an empty repo gives status 409 and an error dict instead of a list of commits,
+        #  so treat anything that isn't a successful list as "no commits"
+        if commits_response.status_code != 200 or not isinstance(commitsList, list):
+            print(f"No commits available for {repo['name']} (status {commits_response.status_code})")
+            commitsList = []
         commit_count = len(commitsList)
         commit_dates = [c["commit"]["author"]["date"] for c in commitsList]
         repo["commit_count"]= commit_count
