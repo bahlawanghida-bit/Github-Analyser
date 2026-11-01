@@ -1,0 +1,15 @@
+{
+  "name": "github-judger-server",
+  "version": "1.0.0",
+  "description": "Express API that runs the Python GitHub analyzer and returns the results as JSON",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}

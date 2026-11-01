@@ -3,6 +3,7 @@ import requests # lets us send HTTP requests to GitHub's API
 from dotenv import load_dotenv # lets us load variables from a .env file
 import time
 import json
+import sys # gives us sys.argv (command-line words) and sys.stderr
 
 
 # Load the .env file so GITHUB_TOKEN becomes available
@@ -23,6 +24,13 @@ headers = {
 }
 
 
+def log(message):
+    """Print a progress/error message to stderr instead of stdout.
+    stdout is reserved for real output (run_analysis.py prints JSON there for the Node server),
+    so progress chatter must not mix into it. You still see stderr in the terminal as usual."""
+    print(message, file=sys.stderr)
+
+
 def github_get(url, params=None):
     """Send one GET request to the GitHub API, waiting out the rate limit if needed.
     Returns the response, or None if the network failed."""
@@ -32,7 +40,7 @@ def github_get(url, params=None):
             response = requests.get(url, headers=headers, params=params, timeout=30)
         except requests.exceptions.RequestException as e:
             # RequestException is the parent of ConnectionError, Timeout, etc. — catches all network problems
-            print(f"Network error for {url}: {e}")
+            log(f"Network error for {url}: {e}")
             return None
 
         # .get() instead of [] so a missing header doesn't crash with KeyError
@@ -41,7 +49,7 @@ def github_get(url, params=None):
             # X-RateLimit-Reset is the moment (in seconds since 1970) the limit refills
             reset_at = int(response.headers.get("X-RateLimit-Reset", time.time() + 60))
             wait = max(reset_at - time.time(), 0) + 1
-            print(f"Rate limit used up, pausing {wait:.0f} sec until it resets . . .")
+            log(f"Rate limit used up, pausing {wait:.0f} sec until it resets . . .")
             time.sleep(wait)
             # 403/429 means GitHub refused THIS request, so send it again now that the limit has reset
             if response.status_code in (403, 429):
@@ -68,7 +76,7 @@ def fetch_all_pages(url, params=None):
             return []
         # any other non-200 (404 user not found, 403 forbidden...) is a real error
         if response.status_code != 200:
-            print(f"GitHub error {response.status_code} for {url}: {response.text[:200]}")
+            log(f"GitHub error {response.status_code} for {url}: {response.text[:200]}")
             return None
 
         items = response.json()
@@ -77,6 +85,20 @@ def fetch_all_pages(url, params=None):
         if len(items) < 100:
             return all_items
         page += 1
+
+
+def check_user_exists(username):
+    """Ask GitHub whether this username exists, so callers can tell "no such user" apart from other failures.
+    Returns True (exists), False (GitHub said 404), or None (couldn't tell: network or GitHub problem)."""
+    response = github_get(f"https://api.github.com/users/{username}")
+    if response is None:
+        return None # network failure, already logged by github_get
+    if response.status_code == 404:
+        return False
+    if response.status_code == 200:
+        return True
+    log(f"GitHub error {response.status_code} while looking up user '{username}'")
+    return None
 
 
 def fetch_repos(username):
@@ -88,7 +110,7 @@ def fetch_languages(repo):
     """Fetch the bytes-per-language breakdown of one repo. Returns a dict ({} on error)."""
     response = github_get(repo["languages_url"])
     if response is None or response.status_code != 200:
-        print(f"Could not fetch languages for {repo['name']}, skipping")
+        log(f"Could not fetch languages for {repo['name']}, skipping")
         return {}
     return response.json()
 
@@ -104,17 +126,13 @@ def fetch_commit_dates(repo, username):
     return [c["commit"]["author"]["date"] for c in commits]
 
 
-def main():
-    # Ask the user which GitHub account to analyze
-    # .strip() removes accidental spaces/newlines around what they typed
-    username = input("Enter the GitHub username: ").strip()
-    if not username:
-        raise SystemExit("No username entered.")
-
+def fetch_profile_data(username):
+    """Fetch every public repo of a user, with each repo's languages and this user's commit dates.
+    Returns a list of clean repo dicts, or None if the repo list couldn't be fetched."""
     all_repos = fetch_repos(username)
     if all_repos is None:
-        raise SystemExit(f"Could not fetch repos for '{username}'.")
-    print(f"Total repos found: {len(all_repos)}")
+        return None
+    log(f"Total repos found: {len(all_repos)}")
 
     # Build a clean, filtered version of each repo,
     # keeping only the fields we actually need
@@ -133,20 +151,41 @@ def main():
     # For each repo, fetch its full language breakdown and the user's commits, and attach them
     for repo in filtered_repos:
         repo["languages"] = fetch_languages(repo)
-        print(f"Fetched languages for: {repo['name']}")
+        log(f"Fetched languages for: {repo['name']}")
 
         commit_dates = fetch_commit_dates(repo, username)
         repo["commit_dates"] = commit_dates
         # None (fetch failed) stays None so the analysis knows the count is unknown, not zero
         repo["commit_count"] = len(commit_dates) if commit_dates is not None else None
-        print(f"Fetched commits for: {repo['name']} - {repo['commit_count']}")
+        log(f"Fetched commits for: {repo['name']} - {repo['commit_count']}")
 
-    os.makedirs("data", exist_ok=True) # create a folder called data
-    output_filename = os.path.join("data", f"{username}_github_data.json") #create a file name using the username of the account inside the file "data"
-    with open(output_filename, "w", encoding="utf-8") as f: #create or over write a file
-        json.dump(filtered_repos, f, indent=2)
+    return filtered_repos
 
-    print(f"Data saved to {output_filename}")
+
+def save_raw_data(username, repos):
+    """Write the fetched repos to data/<username>_github_data.json and return the file path."""
+    os.makedirs("data", exist_ok=True) # create a folder called data (no error if it already exists)
+    output_filename = os.path.join("data", f"{username}_github_data.json") # file name built from the username, inside "data"
+    with open(output_filename, "w", encoding="utf-8") as f: # create or overwrite the file
+        json.dump(repos, f, indent=2)
+    return output_filename
+
+
+def main():
+    # take the username from the command line (python github_stats.py octocat) or ask for it
+    if len(sys.argv) > 1:
+        username = sys.argv[1].strip()
+    else:
+        # .strip() removes accidental spaces/newlines around what they typed
+        username = input("Enter the GitHub username: ").strip()
+    if not username:
+        raise SystemExit("No username entered.")
+
+    repos = fetch_profile_data(username)
+    if repos is None:
+        raise SystemExit(f"Could not fetch repos for '{username}'.")
+
+    print(f"Data saved to {save_raw_data(username, repos)}")
 
 
 # Only run main() when this file is run directly (python github_stats.py),
